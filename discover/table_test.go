@@ -314,8 +314,18 @@ func TestTable_addVerifiedNode(t *testing.T) {
 	// Insert two nodes.
 	n1 := nodeAtDistance(tab.self().ID(), 256, net.IP{88, 77, 66, 1})
 	n2 := nodeAtDistance(tab.self().ID(), 256, net.IP{88, 77, 66, 2})
+	n3 := nodeAtDistance(tab.self().ID(), 256, net.IP{66, 77, 88, 3})
+
+	// Check if node is valid before adding it
+	validFN := func(node enode.Node) bool {
+		return !node.IP().Equal(n3.IP()) // Node 3 is invalid
+	}
+
+	tab.nodeIsValidFn = validFN
+
 	tab.addSeenNode(n1)
 	tab.addSeenNode(n2)
+	tab.addVerifiedNode(n3)
 
 	// Verify bucket content:
 	bcontent := []*node{n1, n2}
@@ -343,14 +353,24 @@ func TestTable_addSeenNode(t *testing.T) {
 	defer db.Close()
 	defer tab.close()
 
-	// Insert two nodes.
+	// Insert three nodes.
 	n1 := nodeAtDistance(tab.self().ID(), 256, net.IP{88, 77, 66, 1})
 	n2 := nodeAtDistance(tab.self().ID(), 256, net.IP{88, 77, 66, 2})
+	n3 := nodeAtDistance(tab.self().ID(), 256, net.IP{66, 77, 88, 3})
+
+	// Check if node is valid before adding it
+	validFN := func(node enode.Node) bool {
+		return !node.IP().Equal(n3.IP()) // Node 3 is invalid
+	}
+
+	tab.nodeIsValidFn = validFN
+
 	tab.addSeenNode(n1)
 	tab.addSeenNode(n2)
+	tab.addSeenNode(n3)
 
 	// Verify bucket content:
-	bcontent := []*node{n1, n2}
+	bcontent := []*node{n1, n2} // n3 shouldnt have been added
 	if !reflect.DeepEqual(tab.bucket(n1.ID()).entries, bcontent) {
 		t.Fatalf("wrong bucket content: %v", tab.bucket(n1.ID()).entries)
 	}
