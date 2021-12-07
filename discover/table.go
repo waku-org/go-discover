@@ -79,6 +79,8 @@ type Table struct {
 	closeReq   chan struct{}
 	closed     chan struct{}
 
+	nodeIsValidFn func(enode.Node) bool
+
 	nodeAddedHook func(*node) // for testing
 }
 
@@ -99,17 +101,18 @@ type bucket struct {
 	ips          netutil.DistinctNetSet
 }
 
-func newTable(t transport, db *enode.DB, bootnodes []*enode.Node, log log.Logger) (*Table, error) {
+func newTable(t transport, db *enode.DB, bootnodes []*enode.Node, nodeIsValidFn func(enode.Node) bool, log log.Logger) (*Table, error) {
 	tab := &Table{
-		net:        t,
-		db:         db,
-		refreshReq: make(chan chan struct{}),
-		initDone:   make(chan struct{}),
-		closeReq:   make(chan struct{}),
-		closed:     make(chan struct{}),
-		rand:       mrand.New(mrand.NewSource(0)),
-		ips:        netutil.DistinctNetSet{Subnet: tableSubnet, Limit: tableIPLimit},
-		log:        log,
+		net:           t,
+		db:            db,
+		refreshReq:    make(chan chan struct{}),
+		initDone:      make(chan struct{}),
+		closeReq:      make(chan struct{}),
+		closed:        make(chan struct{}),
+		rand:          mrand.New(mrand.NewSource(0)),
+		ips:           netutil.DistinctNetSet{Subnet: tableSubnet, Limit: tableIPLimit},
+		nodeIsValidFn: nodeIsValidFn,
+		log:           log,
 	}
 	if err := tab.setFallbackNodes(bootnodes); err != nil {
 		return nil, err
@@ -510,6 +513,10 @@ func (tab *Table) addVerifiedNode(n *node) {
 		return
 	}
 	if n.ID() == tab.self().ID() {
+		return
+	}
+
+	if tab.nodeIsValidFn != nil && !tab.nodeIsValidFn(n.Node) {
 		return
 	}
 
