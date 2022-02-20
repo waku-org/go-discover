@@ -498,8 +498,8 @@ type handshakeTestNode struct {
 
 func newHandshakeTest() *handshakeTest {
 	t := new(handshakeTest)
-	t.nodeA.init(testKeyA, net.IP{127, 0, 0, 1}, &t.clock)
-	t.nodeB.init(testKeyB, net.IP{127, 0, 0, 1}, &t.clock)
+	t.nodeA.init(testKeyA, net.IP{127, 0, 0, 1}, &t.clock, [6]byte{'d', 'i', 's', 'c', 'v', '5'})
+	t.nodeB.init(testKeyB, net.IP{127, 0, 0, 1}, &t.clock, [6]byte{'d', 'i', 's', 'c', 'v', '5'})
 	return t
 }
 
@@ -508,11 +508,11 @@ func (t *handshakeTest) close() {
 	t.nodeB.ln.Database().Close()
 }
 
-func (n *handshakeTestNode) init(key *ecdsa.PrivateKey, ip net.IP, clock mclock.Clock) {
+func (n *handshakeTestNode) init(key *ecdsa.PrivateKey, ip net.IP, clock mclock.Clock, protocolID [6]byte) {
 	db, _ := enode.OpenDB("")
 	n.ln = enode.NewLocalNode(db, key)
 	n.ln.SetStaticIP(ip)
-	n.c = NewCodec(n.ln, key, clock)
+	n.c = NewCodec(n.ln, key, clock, protocolID)
 }
 
 func (n *handshakeTestNode) encode(t testing.TB, to handshakeTestNode, p Packet) ([]byte, Nonce) {
