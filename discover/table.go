@@ -458,7 +458,6 @@ func (tab *Table) bucketAtDistance(d int) *bucket {
 	return tab.buckets[d-bucketMinDistance-1]
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
 // addSeenNode adds a node which may or may not be live to the end of a bucket. If the
 // bucket has space available, adding the node succeeds immediately. Otherwise, the node is
 // added to the replacements list.
@@ -498,7 +497,6 @@ func (tab *Table) addSeenNode(n *node) {
 	}
 }
 
-/////////////////////////////////////////////////////////////
 // addVerifiedNode adds a node whose existence has been verified recently to the front of a
 // bucket. If the node is already in the bucket, it is moved to the front. If the bucket
 // has no space, the node is added to the replacements list.

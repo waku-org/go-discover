@@ -37,7 +37,7 @@ type UDPConn interface {
 }
 
 type V5Config struct {
-	ProtocolID [6]byte
+	ProtocolID *[6]byte
 }
 
 // Config holds settings for the discovery listener.
@@ -51,9 +51,8 @@ type Config struct {
 	Unhandled    chan<- ReadPacket  // unhandled packets are sent on this channel
 	Log          log.Logger         // if set, log messages go here
 	ValidSchemes enr.IdentityScheme // allowed identity schemes
+	V5Config     V5Config           // DiscV5 settings
 	Clock        mclock.Clock
-	ValidNodeFn  func(enode.Node) bool // function to validate a node before it's added to routing tables
-	V5Config     V5Config              // DiscV5 settings
 }
 
 func (cfg Config) withDefaults() Config {
@@ -66,8 +65,8 @@ func (cfg Config) withDefaults() Config {
 	if cfg.Clock == nil {
 		cfg.Clock = mclock.System{}
 	}
-	if len(cfg.V5Config.ProtocolID) == 0 {
-		cfg.V5Config.ProtocolID = v5wire.DefaultProtocolID
+	if cfg.V5Config.ProtocolID == nil {
+		cfg.V5Config.ProtocolID = &v5wire.DefaultProtocolID
 	}
 	return cfg
 }
