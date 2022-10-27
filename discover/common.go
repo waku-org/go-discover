@@ -25,7 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/p2p/enr"
 	"github.com/ethereum/go-ethereum/p2p/netutil"
-	"github.com/status-im/go-discover/discover/v5wire"
+	"github.com/waku-org/go-discover/discover/v5wire"
 )
 
 // UDPConn is a network connection on which discovery can operate.
@@ -46,12 +46,13 @@ type Config struct {
 	PrivateKey *ecdsa.PrivateKey
 
 	// These settings are optional:
-	NetRestrict  *netutil.Netlist   // list of allowed IP networks
-	Bootnodes    []*enode.Node      // list of bootstrap nodes
-	Unhandled    chan<- ReadPacket  // unhandled packets are sent on this channel
-	Log          log.Logger         // if set, log messages go here
-	ValidSchemes enr.IdentityScheme // allowed identity schemes
-	V5Config     V5Config           // DiscV5 settings
+	NetRestrict  *netutil.Netlist      // list of allowed IP networks
+	Bootnodes    []*enode.Node         // list of bootstrap nodes
+	Unhandled    chan<- ReadPacket     // unhandled packets are sent on this channel
+	Log          log.Logger            // if set, log messages go here
+	ValidSchemes enr.IdentityScheme    // allowed identity schemes
+	V5Config     V5Config              // DiscV5 settings
+	ValidNodeFn  func(enode.Node) bool // function to validate a node before it's added to routing tables
 	Clock        mclock.Clock
 }
 

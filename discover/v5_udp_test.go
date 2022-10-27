@@ -32,8 +32,8 @@ import (
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/p2p/enr"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/status-im/go-discover/discover/v5wire"
-	"github.com/status-im/go-discover/internal/testlog"
+	"github.com/waku-org/go-discover/discover/v5wire"
+	"github.com/waku-org/go-discover/internal/testlog"
 )
 
 // Real sockets, real crypto: this test checks end-to-end connectivity for UDPv5.

@@ -33,7 +33,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/p2p/netutil"
-	"github.com/status-im/go-discover/discover/v4wire"
+	"github.com/waku-org/go-discover/discover/v4wire"
 )
 
 // Errors

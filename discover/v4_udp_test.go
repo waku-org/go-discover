@@ -34,8 +34,8 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/p2p/enr"
-	"github.com/status-im/go-discover/discover/v4wire"
-	"github.com/status-im/go-discover/internal/testlog"
+	"github.com/waku-org/go-discover/discover/v4wire"
+	"github.com/waku-org/go-discover/internal/testlog"
 )
 
 // shared test variables
