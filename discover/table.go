@@ -79,8 +79,6 @@ type Table struct {
 	closeReq   chan struct{}
 	closed     chan struct{}
 
-	nodeIsValidFn func(enode.Node) bool
-
 	nodeAddedHook func(*node) // for testing
 }
 
@@ -101,18 +99,17 @@ type bucket struct {
 	ips          netutil.DistinctNetSet
 }
 
-func newTable(t transport, db *enode.DB, bootnodes []*enode.Node, nodeIsValidFn func(enode.Node) bool, log log.Logger) (*Table, error) {
+func newTable(t transport, db *enode.DB, bootnodes []*enode.Node, log log.Logger) (*Table, error) {
 	tab := &Table{
-		net:           t,
-		db:            db,
-		refreshReq:    make(chan chan struct{}),
-		initDone:      make(chan struct{}),
-		closeReq:      make(chan struct{}),
-		closed:        make(chan struct{}),
-		rand:          mrand.New(mrand.NewSource(0)),
-		ips:           netutil.DistinctNetSet{Subnet: tableSubnet, Limit: tableIPLimit},
-		nodeIsValidFn: nodeIsValidFn,
-		log:           log,
+		net:        t,
+		db:         db,
+		refreshReq: make(chan chan struct{}),
+		initDone:   make(chan struct{}),
+		closeReq:   make(chan struct{}),
+		closed:     make(chan struct{}),
+		rand:       mrand.New(mrand.NewSource(0)),
+		ips:        netutil.DistinctNetSet{Subnet: tableSubnet, Limit: tableIPLimit},
+		log:        log,
 	}
 	if err := tab.setFallbackNodes(bootnodes); err != nil {
 		return nil, err
@@ -468,10 +465,6 @@ func (tab *Table) addSeenNode(n *node) {
 		return
 	}
 
-	if tab.nodeIsValidFn != nil && !tab.nodeIsValidFn(n.Node) {
-		return
-	}
-
 	tab.mutex.Lock()
 	defer tab.mutex.Unlock()
 	b := tab.bucket(n.ID())
@@ -511,10 +504,6 @@ func (tab *Table) addVerifiedNode(n *node) {
 		return
 	}
 	if n.ID() == tab.self().ID() {
-		return
-	}
-
-	if tab.nodeIsValidFn != nil && !tab.nodeIsValidFn(n.Node) {
 		return
 	}
 
@@ -683,15 +672,14 @@ func (h *nodesByDistance) push(n *node, maxElems int) {
 	ix := sort.Search(len(h.entries), func(i int) bool {
 		return enode.DistCmp(h.target, h.entries[i].ID(), n.ID()) > 0
 	})
+
+	end := len(h.entries)
 	if len(h.entries) < maxElems {
 		h.entries = append(h.entries, n)
 	}
-	if ix == len(h.entries) {
-		// farther away than all nodes we already have.
-		// if there was room for it, the node is now the last element.
-	} else {
-		// slide existing entries down to make room
-		// this will overwrite the entry we just appended.
+	if ix < end {
+		// Slide existing entries down to make room.
+		// This will overwrite the entry we just appended.
 		copy(h.entries[ix+1:], h.entries[ix:])
 		h.entries[ix] = n
 	}

@@ -92,7 +92,7 @@ func TestHandshake(t *testing.T) {
 	}
 
 	// A <- B   NODES
-	nodes, _ := net.nodeB.encode(t, net.nodeA, &Nodes{Total: 1})
+	nodes, _ := net.nodeB.encode(t, net.nodeA, &Nodes{RespCount: 1})
 	net.nodeA.expectDecode(t, NodesMsg, nodes)
 }
 
@@ -150,7 +150,7 @@ func TestHandshake_norecord(t *testing.T) {
 	net.nodeB.expectDecode(t, FindnodeMsg, findnode)
 
 	// A <- B   NODES
-	nodes, _ := net.nodeB.encode(t, net.nodeA, &Nodes{Total: 1})
+	nodes, _ := net.nodeB.encode(t, net.nodeA, &Nodes{RespCount: 1})
 	net.nodeA.expectDecode(t, NodesMsg, nodes)
 }
 
@@ -190,7 +190,7 @@ func TestHandshake_rekey(t *testing.T) {
 	net.nodeB.expectDecode(t, FindnodeMsg, findnode)
 
 	// A <- B   NODES
-	nodes, _ := net.nodeB.encode(t, net.nodeA, &Nodes{Total: 1})
+	nodes, _ := net.nodeB.encode(t, net.nodeA, &Nodes{RespCount: 1})
 	net.nodeA.expectDecode(t, NodesMsg, nodes)
 }
 
@@ -225,7 +225,7 @@ func TestHandshake_rekey2(t *testing.T) {
 	net.nodeB.expectDecode(t, FindnodeMsg, findnode)
 
 	// A <- B   NODES
-	nodes, _ := net.nodeB.encode(t, net.nodeA, &Nodes{Total: 1})
+	nodes, _ := net.nodeB.encode(t, net.nodeA, &Nodes{RespCount: 1})
 	net.nodeA.expectDecode(t, NodesMsg, nodes)
 }
 
@@ -518,7 +518,7 @@ func (n *handshakeTestNode) init(key *ecdsa.PrivateKey, ip net.IP, clock mclock.
 	db, _ := enode.OpenDB("")
 	n.ln = enode.NewLocalNode(db, key)
 	n.ln.SetStaticIP(ip)
-	n.c = NewCodec(n.ln, key, clock, protocolID)
+	n.c = NewCodec(n.ln, key, clock, nil)
 }
 
 func (n *handshakeTestNode) encode(t testing.TB, to handshakeTestNode, p Packet) ([]byte, Nonce) {
