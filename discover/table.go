@@ -53,12 +53,13 @@ const (
 	bucketIPLimit, bucketSubnet = 2, 24 // at most 2 addresses from the same /24
 	tableIPLimit, tableSubnet   = 10, 24
 
-	refreshInterval    = 30 * time.Minute
-	revalidateInterval = 10 * time.Second
-	copyNodesInterval  = 30 * time.Second
-	seedMinTableTime   = 5 * time.Minute
-	seedCount          = 30
-	seedMaxAge         = 5 * 24 * time.Hour
+	refreshInterval         = 30 * time.Minute
+	revalidateInterval      = 10 * time.Second
+	copyNodesInterval       = 30 * time.Second
+	reseedBootnodesInterval = 15 * time.Second
+	seedMinTableTime        = 5 * time.Minute
+	seedCount               = 30
+	seedMaxAge              = 5 * 24 * time.Hour
 )
 
 // Table is the 'node table', a Kademlia-like index of neighbor nodes. The table keeps
@@ -222,6 +223,7 @@ func (tab *Table) loop() {
 		revalidate     = time.NewTimer(tab.nextRevalidateTime())
 		refresh        = time.NewTicker(refreshInterval)
 		copyNodes      = time.NewTicker(copyNodesInterval)
+		reseed         = time.NewTicker(reseedBootnodesInterval)
 		refreshDone    = make(chan struct{})           // where doRefresh reports completion
 		revalidateDone chan struct{}                   // where doRevalidate reports completion
 		waiting        = []chan struct{}{tab.initDone} // holds waiting callers while doRefresh runs
@@ -229,6 +231,7 @@ func (tab *Table) loop() {
 	defer refresh.Stop()
 	defer revalidate.Stop()
 	defer copyNodes.Stop()
+	defer reseed.Stop()
 
 	// Start initial refresh.
 	go tab.doRefresh(refreshDone)
@@ -261,6 +264,8 @@ loop:
 			revalidateDone = nil
 		case <-copyNodes.C:
 			go tab.copyLiveNodes()
+		case <-reseed.C:
+			go tab.doReseedBootnodes()
 		case <-tab.closeReq:
 			break loop
 		}
@@ -299,6 +304,13 @@ func (tab *Table) doRefresh(done chan struct{}) {
 	// We perform a few lookups with a random target instead.
 	for i := 0; i < 3; i++ {
 		tab.net.lookupRandom()
+	}
+}
+
+// doReseedNodes checks if the table is empty and inserts the initial bootstrap nodes.
+func (tab *Table) doReseedBootnodes() {
+	if tab.len() == 0 {
+		tab.loadSeedNodes()
 	}
 }
 
