@@ -86,15 +86,11 @@ func (test *udpTest) close() {
 
 // handles a packet as if it had been sent to the transport.
 func (test *udpTest) packetIn(wantError error, data v4wire.Packet) {
-	test.t.Helper()
-
 	test.packetInFrom(wantError, test.remotekey, test.remoteaddr, data)
 }
 
 // handles a packet as if it had been sent to the transport by the key/endpoint.
 func (test *udpTest) packetInFrom(wantError error, key *ecdsa.PrivateKey, addr *net.UDPAddr, data v4wire.Packet) {
-	test.t.Helper()
-
 	enc, _, err := v4wire.Encode(key, data)
 	if err != nil {
 		test.t.Errorf("%s encode error: %v", data.Name(), err)
@@ -108,8 +104,6 @@ func (test *udpTest) packetInFrom(wantError error, key *ecdsa.PrivateKey, addr *
 // waits for a packet to be sent by the transport.
 // validate should have type func(X, *net.UDPAddr, []byte), where X is a packet type.
 func (test *udpTest) waitPacketOut(validate interface{}) (closed bool) {
-	test.t.Helper()
-
 	dgram, err := test.pipe.receive()
 	if err == errClosed {
 		return true
@@ -549,20 +543,14 @@ func TestUDPv4_smallNetConvergence(t *testing.T) {
 }
 
 func startLocalhostV4(t *testing.T, cfg Config) *UDPv4 {
-	t.Helper()
-
 	cfg.PrivateKey = newkey()
 	db, _ := enode.OpenDB("")
 	ln := enode.NewLocalNode(db, cfg.PrivateKey)
 
 	// Prefix logs with node ID.
 	lprefix := fmt.Sprintf("(%s)", ln.ID().TerminalString())
-	lfmt := log.TerminalFormat(false)
-	cfg.Log = testlog.Logger(t, log.LvlTrace)
-	cfg.Log.SetHandler(log.FuncHandler(func(r *log.Record) error {
-		t.Logf("%s %s", lprefix, lfmt.Format(r))
-		return nil
-	}))
+	fmt.Println("### prefix", lprefix)
+	cfg.Log = testlog.Logger(t, log.LevelTrace, lprefix)
 
 	// Listen.
 	socket, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IP{127, 0, 0, 1}})

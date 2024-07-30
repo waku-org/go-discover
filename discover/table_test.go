@@ -177,8 +177,6 @@ func TestTable_BucketIPLimit(t *testing.T) {
 // checkIPLimitInvariant checks that ip limit sets contain an entry for every
 // node in the table and no extra entries.
 func checkIPLimitInvariant(t *testing.T, tab *Table) {
-	t.Helper()
-
 	tabset := netutil.DistinctNetSet{Subnet: tableSubnet, Limit: tableIPLimit}
 	for _, b := range tab.buckets {
 		for _, n := range b.entries {

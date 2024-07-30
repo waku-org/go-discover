@@ -522,13 +522,10 @@ func (n *handshakeTestNode) init(key *ecdsa.PrivateKey, ip net.IP, clock mclock.
 }
 
 func (n *handshakeTestNode) encode(t testing.TB, to handshakeTestNode, p Packet) ([]byte, Nonce) {
-	t.Helper()
 	return n.encodeWithChallenge(t, to, nil, p)
 }
 
 func (n *handshakeTestNode) encodeWithChallenge(t testing.TB, to handshakeTestNode, c *Whoareyou, p Packet) ([]byte, Nonce) {
-	t.Helper()
-
 	// Copy challenge and add destination node. This avoids sharing 'c' among the two codecs.
 	var challenge *Whoareyou
 	if c != nil {
@@ -546,8 +543,6 @@ func (n *handshakeTestNode) encodeWithChallenge(t testing.TB, to handshakeTestNo
 }
 
 func (n *handshakeTestNode) expectDecode(t *testing.T, ptype byte, p []byte) Packet {
-	t.Helper()
-
 	dec, err := n.decode(p)
 	if err != nil {
 		t.Fatal(fmt.Errorf("(%s) %v", n.ln.ID().TerminalString(), err))
@@ -560,7 +555,6 @@ func (n *handshakeTestNode) expectDecode(t *testing.T, ptype byte, p []byte) Pac
 }
 
 func (n *handshakeTestNode) expectDecodeErr(t *testing.T, wantErr error, p []byte) {
-	t.Helper()
 	if _, err := n.decode(p); !errors.Is(err, wantErr) {
 		t.Fatal(fmt.Errorf("(%s) got err %q, want %q", n.ln.ID().TerminalString(), err, wantErr))
 	}

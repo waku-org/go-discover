@@ -98,8 +98,6 @@ func TestDeriveKeys(t *testing.T) {
 }
 
 func check(t *testing.T, what string, x, y []byte) {
-	t.Helper()
-
 	if !bytes.Equal(x, y) {
 		t.Errorf("wrong %s: %#x != %#x", what, x, y)
 	} else {

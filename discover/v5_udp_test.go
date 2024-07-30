@@ -80,12 +80,7 @@ func startLocalhostV5(t *testing.T, cfg Config) *UDPv5 {
 
 	// Prefix logs with node ID.
 	lprefix := fmt.Sprintf("(%s)", ln.ID().TerminalString())
-	lfmt := log.TerminalFormat(false)
-	cfg.Log = testlog.Logger(t, log.LvlTrace)
-	cfg.Log.SetHandler(log.FuncHandler(func(r *log.Record) error {
-		t.Logf("%s %s", lprefix, lfmt.Format(r))
-		return nil
-	}))
+	cfg.Log = testlog.Logger(t, log.LvlTrace, lprefix)
 
 	// Listen.
 	socket, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IP{127, 0, 0, 1}})
@@ -127,7 +122,6 @@ func TestUDPv5_unknownPacket(t *testing.T) {
 
 	nonce := v5wire.Nonce{1, 2, 3}
 	check := func(p *v5wire.Whoareyou, wantSeq uint64) {
-		t.Helper()
 		if p.Nonce != nonce {
 			t.Error("wrong nonce in WHOAREYOU:", p.Nonce, nonce)
 		}
@@ -779,14 +773,11 @@ func newUDPV5Test(t *testing.T) *udpV5Test {
 
 // handles a packet as if it had been sent to the transport.
 func (test *udpV5Test) packetIn(packet v5wire.Packet) {
-	test.t.Helper()
 	test.packetInFrom(test.remotekey, test.remoteaddr, packet)
 }
 
 // handles a packet as if it had been sent to the transport by the key/endpoint.
 func (test *udpV5Test) packetInFrom(key *ecdsa.PrivateKey, addr *net.UDPAddr, packet v5wire.Packet) {
-	test.t.Helper()
-
 	ln := test.getNode(key, addr)
 	codec := &testCodec{test: test, id: ln.ID()}
 	enc, _, err := codec.Encode(test.udp.Self().ID(), addr.String(), packet, nil)
@@ -817,8 +808,6 @@ func (test *udpV5Test) getNode(key *ecdsa.PrivateKey, addr *net.UDPAddr) *enode.
 // function. The function must be of type func (X, *net.UDPAddr, v5wire.Nonce) where X is
 // assignable to packetV5.
 func (test *udpV5Test) waitPacketOut(validate interface{}) (closed bool) {
-	test.t.Helper()
-
 	fn := reflect.ValueOf(validate)
 	exptype := fn.Type().In(0)
 
@@ -850,8 +839,6 @@ func (test *udpV5Test) waitPacketOut(validate interface{}) (closed bool) {
 }
 
 func (test *udpV5Test) close() {
-	test.t.Helper()
-
 	test.udp.Close()
 	test.db.Close()
 	for id, n := range test.nodesByID {

@@ -18,125 +18,91 @@
 package testlog
 
 import (
+	"context"
+	"log/slog"
+	"os"
 	"sync"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/log"
 )
 
-// Handler returns a log handler which logs to the unit test log of t.
-func Handler(t *testing.T, level log.Lvl) log.Handler {
-	return log.LvlFilterHandler(level, &handler{t, log.TerminalFormat(false)})
-}
-
-type handler struct {
-	t   *testing.T
-	fmt log.Format
-}
-
-func (h *handler) Log(r *log.Record) error {
-	h.t.Logf("%s", h.fmt.Format(r))
-	return nil
-}
-
-// logger implements log.Logger such that all output goes to the unit test log via
-// t.Logf(). All methods in between logger.Trace, logger.Debug, etc. are marked as test
-// helpers, so the file and line number in unit test output correspond to the call site
-// which emitted the log message.
 type logger struct {
-	t  *testing.T
-	l  log.Logger
-	mu *sync.Mutex
-	h  *bufHandler
-}
-
-type bufHandler struct {
-	buf []*log.Record
-	fmt log.Format
-}
-
-func (h *bufHandler) Log(r *log.Record) error {
-	h.buf = append(h.buf, r)
-	return nil
+	l      log.Logger
+	mu     *sync.Mutex
+	prefix string
 }
 
 // Logger returns a logger which logs to the unit test log of t.
-func Logger(t *testing.T, level log.Lvl) log.Logger {
-	l := &logger{
-		t:  t,
-		l:  log.New(),
-		mu: new(sync.Mutex),
-		h:  &bufHandler{fmt: log.TerminalFormat(false)},
+func Logger(t *testing.T, level slog.Level, optionalPrefix ...string) log.Logger {
+	h := log.NewTerminalHandlerWithSource(os.Stderr, level, false)
+	prefix := ""
+	if len(optionalPrefix) > 0 {
+		prefix = optionalPrefix[0]
 	}
-	l.l.SetHandler(log.LvlFilterHandler(level, l.h))
-	return l
+	return &logger{l: log.NewLoggerWithOpts(h, &log.LoggerOptions{SkipCallers: 1}), mu: new(sync.Mutex), prefix: prefix}
 }
 
-func (l *logger) Trace(msg string, ctx ...interface{}) {
-	l.t.Helper()
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.l.Trace(msg, ctx...)
-	l.flush()
-}
-
-func (l *logger) Debug(msg string, ctx ...interface{}) {
-	l.t.Helper()
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.l.Debug(msg, ctx...)
-	l.flush()
-}
-
-func (l *logger) Info(msg string, ctx ...interface{}) {
-	l.t.Helper()
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.l.Info(msg, ctx...)
-	l.flush()
-}
-
-func (l *logger) Warn(msg string, ctx ...interface{}) {
-	l.t.Helper()
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.l.Warn(msg, ctx...)
-	l.flush()
-}
-
-func (l *logger) Error(msg string, ctx ...interface{}) {
-	l.t.Helper()
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.l.Error(msg, ctx...)
-	l.flush()
-}
-
-func (l *logger) Crit(msg string, ctx ...interface{}) {
-	l.t.Helper()
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.l.Crit(msg, ctx...)
-	l.flush()
+func (l *logger) With(ctx ...interface{}) log.Logger {
+	return &logger{l: l.l.With(ctx...), mu: l.mu, prefix: l.prefix}
 }
 
 func (l *logger) New(ctx ...interface{}) log.Logger {
-	return &logger{l.t, l.l.New(ctx...), l.mu, l.h}
+	return l.With(ctx...)
 }
 
-func (l *logger) GetHandler() log.Handler {
-	return l.l.GetHandler()
+func (l *logger) Log(level slog.Level, msg string, ctx ...interface{}) {
+	l.Write(level, msg, ctx...)
 }
 
-func (l *logger) SetHandler(h log.Handler) {
-	l.l.SetHandler(h)
+func (l *logger) Trace(msg string, ctx ...interface{}) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.Write(log.LevelTrace, msg, ctx...)
 }
 
-// flush writes all buffered messages and clears the buffer.
-func (l *logger) flush() {
-	l.t.Helper()
-	for _, r := range l.h.buf {
-		l.t.Logf("%s", l.h.fmt.Format(r))
+func (l *logger) Debug(msg string, ctx ...interface{}) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.Write(log.LevelDebug, msg, ctx...)
+}
+
+func (l *logger) Info(msg string, ctx ...interface{}) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.Write(log.LevelInfo, msg, ctx...)
+}
+
+func (l *logger) Warn(msg string, ctx ...interface{}) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.Write(log.LevelWarn, msg, ctx...)
+}
+
+func (l *logger) Error(msg string, ctx ...interface{}) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.Write(log.LevelError, msg, ctx...)
+}
+
+func (l *logger) Crit(msg string, ctx ...interface{}) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.Write(log.LevelCrit, msg, ctx...)
+	os.Exit(1)
+}
+
+func (l *logger) Write(level slog.Level, msg string, attrs ...any) {
+	if l.prefix != "" {
+		msg = l.prefix + " " + msg
 	}
-	l.h.buf = nil
+	l.l.Write(level, msg, attrs...)
+}
+
+func (l *logger) Enabled(ctx context.Context, level slog.Level) bool {
+	return true
+}
+
+func (l *logger) Handler() slog.Handler {
+	return l.l.Handler()
 }

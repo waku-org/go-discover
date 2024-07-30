@@ -153,7 +153,6 @@ func serveTestnet(test *udpTest, testnet *preminedTestnet) {
 // checkLookupResults verifies that the results of a lookup are the closest nodes to
 // the testnet's target.
 func checkLookupResults(t *testing.T, tn *preminedTestnet, results []*enode.Node) {
-	t.Helper()
 	t.Logf("results:")
 	for _, e := range results {
 		t.Logf("  ld=%d, %x", enode.LogDist(tn.target.id(), e.ID()), e.ID().Bytes())
