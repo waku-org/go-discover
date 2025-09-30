@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
 	"sync"
 	"time"
 
@@ -761,7 +762,8 @@ func (t *UDPv5) handle(p v5wire.Packet, fromID enode.ID, fromAddr *net.UDPAddr) 
 		t.handlePing(p, fromID, fromAddr)
 	case *v5wire.Pong:
 		if t.handleCallResponse(fromID, fromAddr, p) {
-			t.localNode.UDPEndpointStatement(fromAddr, &net.UDPAddr{IP: p.ToIP, Port: int(p.ToPort)})
+			toAddr, _ := netip.AddrFromSlice(p.ToIP)
+			t.localNode.UDPEndpointStatement(fromAddr.AddrPort(), netip.AddrPortFrom(toAddr, p.ToPort))
 		}
 	case *v5wire.Findnode:
 		t.handleFindnode(p, fromID, fromAddr)

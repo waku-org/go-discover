@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
 	"sync"
 	"time"
 
@@ -34,6 +35,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/p2p/netutil"
+
 	"github.com/waku-org/go-discover/discover/v4wire"
 )
 
@@ -242,7 +244,7 @@ func (t *UDPv4) sendPing(toid enode.ID, toaddr *net.UDPAddr, callback func()) *r
 		return matched, matched
 	})
 	// Send the packet.
-	t.localNode.UDPContact(toaddr)
+	t.localNode.UDPContact(toaddr.AddrPort())
 	t.write(toaddr, toid, req.Name(), packet)
 	return rm
 }
@@ -560,15 +562,15 @@ func (t *UDPv4) handlePacket(from *net.UDPAddr, buf []byte) error {
 }
 
 // checkBond checks if the given node has a recent enough endpoint proof.
-func (t *UDPv4) checkBond(id enode.ID, ip net.IP) bool {
-	return time.Since(t.db.LastPongReceived(id, ip)) < bondExpiration
+func (t *UDPv4) checkBond(id enode.ID, addr netip.Addr) bool {
+	return time.Since(t.db.LastPongReceived(id, addr)) < bondExpiration
 }
 
 // ensureBond solicits a ping from a node if we haven't seen a ping from it for a while.
 // This ensures there is a valid endpoint proof on the remote end.
 func (t *UDPv4) ensureBond(toid enode.ID, toaddr *net.UDPAddr) {
-	tooOld := time.Since(t.db.LastPingReceived(toid, toaddr.IP)) > bondExpiration
-	if tooOld || t.db.FindFails(toid, toaddr.IP) > maxFindnodeFailures {
+	tooOld := time.Since(t.db.LastPingReceived(toid, toaddr.AddrPort().Addr())) > bondExpiration
+	if tooOld || t.db.FindFails(toid, toaddr.AddrPort().Addr()) > maxFindnodeFailures {
 		rm := t.sendPing(toid, toaddr, nil)
 		<-rm.errc
 		// Wait for them to ping back and process our pong.
@@ -668,7 +670,7 @@ func (t *UDPv4) handlePing(h *packetHandlerV4, from *net.UDPAddr, fromID enode.I
 
 	// Ping back if our last pong on file is too far in the past.
 	n := wrapNode(enode.NewV4(h.senderKey, from.IP, int(req.From.TCP), from.Port))
-	if time.Since(t.db.LastPongReceived(n.ID(), from.IP)) > bondExpiration {
+	if time.Since(t.db.LastPongReceived(n.ID(), from.AddrPort().Addr())) > bondExpiration {
 		t.sendPing(fromID, from, func() {
 			t.tab.addVerifiedNode(n)
 		})
@@ -677,8 +679,8 @@ func (t *UDPv4) handlePing(h *packetHandlerV4, from *net.UDPAddr, fromID enode.I
 	}
 
 	// Update node database and endpoint predictor.
-	t.db.UpdateLastPingReceived(n.ID(), from.IP, time.Now())
-	t.localNode.UDPEndpointStatement(from, &net.UDPAddr{IP: req.To.IP, Port: int(req.To.UDP)})
+	t.db.UpdateLastPingReceived(n.ID(), from.AddrPort().Addr(), time.Now())
+	t.localNode.UDPEndpointStatement(from.AddrPort(), req.To.UDPAddrPort())
 }
 
 // PONG/v4
@@ -692,8 +694,8 @@ func (t *UDPv4) verifyPong(h *packetHandlerV4, from *net.UDPAddr, fromID enode.I
 	if !t.handleReply(fromID, from.IP, req) {
 		return errUnsolicitedReply
 	}
-	t.localNode.UDPEndpointStatement(from, &net.UDPAddr{IP: req.To.IP, Port: int(req.To.UDP)})
-	t.db.UpdateLastPongReceived(fromID, from.IP, time.Now())
+	t.localNode.UDPEndpointStatement(from.AddrPort(), req.To.UDPAddrPort())
+	t.db.UpdateLastPongReceived(fromID, from.AddrPort().Addr(), time.Now())
 	return nil
 }
 
@@ -705,7 +707,7 @@ func (t *UDPv4) verifyFindnode(h *packetHandlerV4, from *net.UDPAddr, fromID eno
 	if v4wire.Expired(req.Expiration) {
 		return errExpired
 	}
-	if !t.checkBond(fromID, from.IP) {
+	if !t.checkBond(fromID, from.AddrPort().Addr()) {
 		// No endpoint proof pong exists, we don't process the packet. This prevents an
 		// attack vector where the discovery protocol could be used to amplify traffic in a
 		// DDOS attack. A malicious actor would send a findnode request with the IP address
@@ -765,7 +767,7 @@ func (t *UDPv4) verifyENRRequest(h *packetHandlerV4, from *net.UDPAddr, fromID e
 	if v4wire.Expired(req.Expiration) {
 		return errExpired
 	}
-	if !t.checkBond(fromID, from.IP) {
+	if !t.checkBond(fromID, from.AddrPort().Addr()) {
 		return errUnknownNode
 	}
 	return nil
