@@ -29,8 +29,9 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/p2p/netutil"
 	"github.com/waku-org/go-discover/discover/v4wire"
@@ -66,7 +67,7 @@ const (
 // UDPv4 implements the v4 wire protocol.
 type UDPv4 struct {
 	conn        UDPConn
-	log         log.Logger
+	log         *zap.Logger
 	netrestrict *netutil.Netlist
 	priv        *ecdsa.PrivateKey
 	localNode   *enode.LocalNode
@@ -311,7 +312,6 @@ func (t *UDPv4) findnode(toid enode.ID, toaddr *net.UDPAddr, target v4wire.Pubke
 			nreceived++
 			n, err := t.nodeFromRPC(toaddr, rn)
 			if err != nil {
-				t.log.Trace("Invalid neighbor node received", "ip", rn.IP, "addr", toaddr, "err", err)
 				continue
 			}
 			nodes = append(nodes, n)
@@ -506,7 +506,6 @@ func (t *UDPv4) send(toaddr *net.UDPAddr, toid enode.ID, req v4wire.Packet) ([]b
 
 func (t *UDPv4) write(toaddr *net.UDPAddr, toid enode.ID, what string, packet []byte) error {
 	_, err := t.conn.WriteToUDP(packet, toaddr)
-	t.log.Trace(">> "+what, "id", toid, "addr", toaddr, "err", err)
 	return err
 }
 
@@ -522,12 +521,12 @@ func (t *UDPv4) readLoop(unhandled chan<- ReadPacket) {
 		nbytes, from, err := t.conn.ReadFromUDP(buf)
 		if netutil.IsTemporaryError(err) {
 			// Ignore temporary read errors.
-			t.log.Debug("Temporary UDP read error", "err", err)
+			t.log.Debug("Temporary UDP read error", zap.Error(err))
 			continue
 		} else if err != nil {
 			// Shut down the loop for permanent errors.
 			if !errors.Is(err, io.EOF) {
-				t.log.Debug("UDP read error", "err", err)
+				t.log.Debug("UDP read error", zap.Error(err))
 			}
 			return
 		}
@@ -543,7 +542,10 @@ func (t *UDPv4) readLoop(unhandled chan<- ReadPacket) {
 func (t *UDPv4) handlePacket(from *net.UDPAddr, buf []byte) error {
 	rawpacket, fromKey, hash, err := v4wire.Decode(buf)
 	if err != nil {
-		t.log.Debug("Bad discv4 packet", "addr", from, "err", err)
+		t.log.Debug("bad discv4 packet",
+			zap.Stringer("addr", from),
+			zap.Error(err),
+		)
 		return err
 	}
 	packet := t.wrapPacket(rawpacket)
@@ -551,7 +553,6 @@ func (t *UDPv4) handlePacket(from *net.UDPAddr, buf []byte) error {
 	if err == nil && packet.preverify != nil {
 		err = packet.preverify(packet, from, fromID, fromKey)
 	}
-	t.log.Trace("<< "+packet.Name(), "id", fromID, "addr", from, "err", err)
 	if err == nil && packet.handle != nil {
 		packet.handle(packet, from, fromID, hash)
 	}

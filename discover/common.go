@@ -20,8 +20,9 @@ import (
 	"crypto/ecdsa"
 	"net"
 
+	"go.uber.org/zap"
+
 	"github.com/ethereum/go-ethereum/common/mclock"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/p2p/enr"
 	"github.com/ethereum/go-ethereum/p2p/netutil"
@@ -48,7 +49,7 @@ type Config struct {
 	NetRestrict *netutil.Netlist  // list of allowed IP networks
 	Bootnodes   []*enode.Node     // list of bootstrap nodes
 	Unhandled   chan<- ReadPacket // unhandled packets are sent on this channel
-	Log         log.Logger        // if set, log messages go here
+	Log         *zap.Logger       // if set, log messages go here
 
 	// V5ProtocolID configures the discv5 protocol identifier.
 	V5ProtocolID *[6]byte
@@ -59,7 +60,7 @@ type Config struct {
 
 func (cfg Config) withDefaults() Config {
 	if cfg.Log == nil {
-		cfg.Log = log.Root()
+		cfg.Log = zap.NewNop()
 	}
 	if cfg.ValidSchemes == nil {
 		cfg.ValidSchemes = enode.ValidSchemes
