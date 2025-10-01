@@ -334,7 +334,7 @@ func (tab *Table) doRevalidate(done chan<- struct{}) {
 	// Ping the selected node and wait for a pong.
 	remoteSeq, err := tab.net.ping(unwrapNode(last))
 
-	logger := tab.log.With(zap.String("id", last.ID().String()), zap.String("addr", last.addr().String()))
+	logger := tab.log.With(zap.Stringer("id", last.ID()), zap.Stringer("addr", last.addr()))
 
 	// Also fetch record if the node replied and returned a higher sequence number.
 	if last.Seq() < remoteSeq {
@@ -364,8 +364,8 @@ func (tab *Table) doRevalidate(done chan<- struct{}) {
 	if r := tab.replace(b, last); r != nil {
 		tab.log.Debug("Replaced dead node",
 			zap.Uint("checks", last.livenessChecks),
-			zap.String("r", r.ID().String()),
-			zap.String("rip", r.IP().String()))
+			zap.Stringer("r", r.ID()),
+			zap.Stringer("rip", r.IP()))
 	} else {
 		tab.log.Debug("Removed dead node",
 			zap.Uint("checks", last.livenessChecks))

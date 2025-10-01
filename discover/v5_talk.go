@@ -21,7 +21,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
+	"go.uber.org/zap"
+
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/waku-org/go-discover/discover/v5wire"
 )
@@ -95,7 +96,7 @@ func (t *talkSystem) handleRequest(id enode.ID, addr *net.UDPAddr, req *v5wire.T
 	case <-timeout.C:
 		// Couldn't get it in time, drop the request.
 		if time.Since(t.lastLog) > 5*time.Second {
-			log.Warn("Dropping TALKREQ due to overload", "ndrop", t.dropCount)
+			t.transport.log.Warn("Dropping TALKREQ due to overload", zap.Int("ndrop", t.dropCount))
 			t.lastLog = time.Now()
 			t.dropCount++
 		}
