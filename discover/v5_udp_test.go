@@ -29,13 +29,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/p2p/enr"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+
 	"github.com/waku-org/go-discover/discover/v5wire"
-	"github.com/waku-org/go-discover/internal/testlog"
 )
 
 // Real sockets, real crypto: this test checks end-to-end connectivity for UDPv5.
@@ -79,13 +79,11 @@ func startLocalhostV5(t *testing.T, cfg Config) *UDPv5 {
 	ln := enode.NewLocalNode(db, cfg.PrivateKey)
 
 	// Prefix logs with node ID.
-	lprefix := fmt.Sprintf("(%s)", ln.ID().TerminalString())
-	lfmt := log.TerminalFormat(false)
-	cfg.Log = testlog.Logger(t, log.LvlTrace)
-	cfg.Log.SetHandler(log.FuncHandler(func(r *log.Record) error {
-		t.Logf("%s %s", lprefix, lfmt.Format(r))
-		return nil
-	}))
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.Log = logger.With(zap.String("nodeId", ln.ID().TerminalString()))
 
 	// Listen.
 	socket, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IP{127, 0, 0, 1}})
@@ -751,6 +749,11 @@ func (c *testCodec) decodeFrame(input []byte) (frame testCodecFrame, p v5wire.Pa
 }
 
 func newUDPV5Test(t *testing.T) *udpV5Test {
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	test := &udpV5Test{
 		t:          t,
 		pipe:       newpipe(),
@@ -766,7 +769,7 @@ func newUDPV5Test(t *testing.T) *udpV5Test {
 	ln.Set(enr.UDP(30303))
 	test.udp, _ = ListenV5(context.Background(), test.pipe, ln, Config{
 		PrivateKey:   test.localkey,
-		Log:          testlog.Logger(t, log.LvlTrace),
+		Log:          logger,
 		ValidSchemes: enode.ValidSchemesForTesting,
 	})
 	test.udp.codec = &testCodec{test: test, id: ln.ID()}

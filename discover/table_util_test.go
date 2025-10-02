@@ -27,8 +27,9 @@ import (
 	"sort"
 	"sync"
 
+	"go.uber.org/zap"
+
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/p2p/enr"
 )
@@ -43,7 +44,11 @@ func init() {
 
 func newTestTable(t transport) (*Table, *enode.DB) {
 	db, _ := enode.OpenDB("")
-	tab, _ := newTable(t, db, nil, log.Root())
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(err)
+	}
+	tab, _ := newTable(t, db, nil, logger)
 	go tab.loop()
 	return tab, db
 }
